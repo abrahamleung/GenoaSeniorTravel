@@ -51,7 +51,8 @@ pacman::p_load(dplyr,
                lmtest,
                tableHTML,
                huxtable,
-               CRediTas)
+               CRediTas,
+               here)
 
 
 
@@ -59,10 +60,11 @@ pacman::p_load(dplyr,
 #install.packages("units", type='binary') #neeed for sf
 #library(units)
 
-#LOAD data ====
-setwd("/Users/abeleung/Documents/Work/Griffith PhD URP/Journal/Research in Transportation Business & Management/Genoa Senior Travel/Data/")
+#LOAD processed data ==== #header edited outside R
+here("Analysis","data","processed")
+here()
 
-df <- read.csv("2019WTPDataset_fixheader.csv")
+df <- read.csv(here("Analysis","data","processed","2019WTPDataset_fixheader.csv"))
 
 #str(df)
 
@@ -70,7 +72,7 @@ df <- read.csv("2019WTPDataset_fixheader.csv")
 #dups <- df %>% 
 #  janitor::get_dupes(2:73)
 
-#write.csv(dups, file = "dubs.csv")
+#write.csv(dups, file = here("Analysis","data","raw", "dubs.csv"))
 
 
 # if outside pipes, include the data as first argument 
@@ -621,11 +623,12 @@ colnames(df) <- gsub(" ","_",colnames(df))
 
 
 #For reference
-write.csv(df, file = "dummy.csv")
+#write.csv(df, file = "dummy.csv")
 
 #DescribeVar====
-describevar <- psych::describe(df)
-write.csv(describevar, file = "describevar.csv")
+#describevar <- psych::describe(df)
+#write.csv(describevar, file = "describevar.csv")
+
 
 
 
@@ -634,9 +637,10 @@ df2 <- df %>% select(WTP_Same, WTP_Imp,
                      Sex, Sex_Female, Age,
                      HomeQuartier,
                      EduQual_rec, Income_rec, Health_rec, NeedAssist_rec, LivesWith_Alone, DriversLic_Current, YrsLived_rec, 
-                     PTPassUse, PTPassUse_Annual_subscription, 
+                     PTPassUse, PTPassUse_Annual_subscription,
+                     Mode_MainMovement,
                      When_MainMovement,When_MainMovement_7to9, When_MainMovement_9to11, When_MainMovement_11to13, When_MainMovement_13to15, When_MainMovement_15to17, When_MainMovement_17to19, 
-                     UseDist_MainMovement2, 
+                     UseDist_MainMovement2,
                      TravelTechUse_Yes, 
                      PastForgo_PoorPT_rec, PastForgo_PoorPT_rec_3,
                      TripsWkly_Drive, TripsWkly_Pax, TripsWkly_Bus, 
@@ -649,20 +653,20 @@ df2 <- df %>% select(WTP_Same, WTP_Imp,
                      Rate_PedPath, Rate_PedXing, Rate_Lighting, Rate_Stairs,
                      WTP_Same_cat, WTP_Imp_cat, WTP_All_cat, WTP_Same_zero, WTP_Imp_zero, WTP_Same_NA, WTP_Imp_NA)
 
-df2 <- df2 %>% drop_na()
+df2 <- df2 %>% drop_na() #n drop from 338 to 247
 
 #For reference
-write.csv(df2, file = "df2.csv")
+#write.csv(df2, file = "df2.csv")
 
 #Crosstabs====
-df %>% tabyl(When_MainMovement, Sex)
+df2 %>% tabyl(When_MainMovement, Sex)
 
 
-df %>% tabyl(When_MainMovement, Tenure)
-df %>% tabyl(When_MainMovement, Age)
+df2 %>% tabyl(When_MainMovement, Tenure)
+df2 %>% tabyl(When_MainMovement, Age)
 
 
-df %>% 
+df2 %>% 
   group_by(EduQual_rec) %>% 
   dplyr::summarise(mean = mean(WTP_Imp, na.rm = TRUE), n = n())
 
@@ -731,7 +735,7 @@ tableHTML(out_table)
 #                 all_categorical() ~ "{n} / {N} ({p}%)"),
 #                 digits = list(all_categorical() ~ c(0, 0, 2), all_continuous() ~ 2),
 
-Desc <- df %>% 
+Desc <- df %>%  #DO NOT USE
   select(
          #Demo
          Sex, Age, StatusFullEN, Status, Occupation, EduQual, Health, LivesWith, Tenure, Income, DriversLic,
@@ -744,7 +748,7 @@ Desc <- df %>%
          WTP_Imp, WTP_Same
   ) %>% # keep only columns of interest
   tbl_summary(     
-    by = Sex,
+    #by = Sex,
     statistic = list(all_continuous() ~ "{mean} ({sd})",
                      all_categorical() ~ "{n} / {N} ({p}%)"),
     digits = list(all_categorical() ~ c(0, 0, 2), all_continuous() ~ 2),
@@ -753,6 +757,8 @@ Desc <- df %>%
   ) %>%
   as_flex_table()
 Desc 
+
+
 
 
 Relev_TravelCost , Relev_TravelTime , Relev_TravelComf , 
@@ -954,18 +960,18 @@ Rate_PedPath, Rate_MaintClean, Rate_PedXing, Rate_Lighting, Rate_Stairs)
 
 
 
-
+#Some var below are in df not df2
 
 hist(df$Age)
 summary(df$Age)
 
 #  histogram with density plot
-c1 <- ggplot(df, aes(x=WTP_Imp)) + 
-  geom_histogram(aes(y=..density..), colour="black", fill="white", binwidth = 25,)+
+c1 <- ggplot(df2, aes(x=WTP_Imp)) + 
+  geom_histogram(aes(y=..density..), colour="black", fill="white", binwidth = 40,)+
   geom_density(alpha=.2, fill="#FF6666") + coord_cartesian(xlim = c(0,800), ylim = c(0,0.0075))
 
-c2 <- ggplot(df, aes(x=WTP_Same)) + 
-  geom_histogram(aes(y=..density..), colour="black", fill="white", binwidth = 25,)+
+c2 <- ggplot(df2, aes(x=WTP_Same)) + 
+  geom_histogram(aes(y=..density..), colour="black", fill="white", binwidth = 40,)+
   geom_density(alpha=.2, fill="#FF6666") + coord_cartesian(xlim = c(0,800), ylim = c(0,0.0075))
 c <- plot_grid(c2, c1,
                align = "v",
@@ -984,34 +990,34 @@ df_WTP %>%
 
 
 #Calculate the mean of each group 
-mu <- df %>%
+mu <- df2 %>%
   group_by(Mode_MainMovement) %>%
   summarise_at(c("WTP_Imp", "WTP_Same"), mean, na.rm = TRUE)
 
 #by mode
-p<-ggplot(df, aes(x=WTP_Imp, fill=Mode_MainMovement, color=Mode_MainMovement)) +
+p<-ggplot(df2, aes(x=WTP_Imp, fill=Mode_MainMovement, color=Mode_MainMovement)) +
   geom_histogram(binwidth=10, alpha=0.1, position="identity") +
   geom_vline(data=mu, aes(xintercept=WTP_Imp, color=Mode_MainMovement),
              linetype="dashed")+
   theme(legend.position="top")
 p
 
-p1 <- ggplot(df, aes(x=WTP_Imp, color=Mode_MainMovement, fill=Mode_MainMovement)) +
+p1 <- ggplot(df2, aes(x=WTP_Imp, color=Mode_MainMovement, fill=Mode_MainMovement)) +
   geom_density(alpha=0.2)+
   geom_vline(data=mu, aes(xintercept=WTP_Imp, color=Mode_MainMovement),
              linetype="dashed")+
   labs(title="WTP Improved histogram plot",x="WTP", y = "Density")+
   theme_classic()
 
-p2 <- ggplot(df, aes(x=WTP_Same, color=Mode_MainMovement, fill=Mode_MainMovement)) +
+p2 <- ggplot(df2, aes(x=WTP_Same, color=Mode_MainMovement, fill=Mode_MainMovement)) +
   geom_density(alpha=0.2)+
   geom_vline(data=mu, aes(xintercept=WTP_Same, color=Mode_MainMovement),
              linetype="dashed")+
   labs(title="WTP Status Quo histogram plot",x="WTP", y = "Density")+
   theme_classic()
 
-p1 <- p1 + coord_cartesian(xlim = c(0,1000), ylim = c(0,0.005))
-p2 <- p2 + coord_cartesian(xlim = c(0,1000), ylim = c(0,0.005))
+p1 <- p1 + coord_cartesian(xlim = c(0,800), ylim = c(0,0.005))
+p2 <- p2 + coord_cartesian(xlim = c(0,800), ylim = c(0,0.005))
 
 plot_grid(p2, p1,
           nrow = 2,
@@ -1385,26 +1391,6 @@ model <- lm(WTP_Same ~
             , data = df)
 
 
-
-
-df2 <- df  %>%
-  select(c("WTP_Same", "WTP_Imp",
-           "Sex_Male" , "Age" , "EduQual_rec" , "Income_rec" , "Health_rec" , "LivesWith_Alone" , "Tenure_Homeowner" , "DriversLic_Current" , 
-           "Mode_MainMovement_Car_or_Motorcycle",
-           "Relev_TravelCost", "Relev_TravelTime",
-           "When_MainMovement_9to11" , "When_MainMovement_11to13" , "When_MainMovement_13to15" , "When_MainMovement_15to17" , "When_MainMovement_17to19" , 
-           "Purpose_MainMovement_Leisure_activities" , "Purpose_MainMovement_Family_activities" , "Purpose_MainMovement_Work",
-           "TravelTechUse_Yes" ,
-           "PastForgo_PoorPT_rec" ,
-           "IntendBike" , "IntendWalk" , "IntendPrivCar", "IntendPT",
-           "Satif_CommCen" , "Satif_GreenSpace" , "Satif_BizActiv" , "Satif_NearPT" , "Satif_FeelSecure" , 
-           "Rate_PedPath" , "Rate_MaintClean" , "Rate_PedXing" , "Rate_Lighting" , "Rate_WalkSafe" , "Rate_Stairs" ,
-           "Relev_TravelComf" , "Rate_StopComf" , "Rate_BoardingComf" , "Rate_AscDesComf" , "Rate_InfoAvailBoards" ,
-           "Rate_InfoAvailStops" , "Rate_TPLCost" , "Rate_TravelTime" , "Rate_WaitTime" , "Rate_Freq" , "Rate_Punct" ,
-           "Rate_SafetyStop" , "Rate_SafetyBoard" , "Rate_GuideCourtesy" ,
-           "PTPassUse_Annual_subscription" ,
-           "IfPTNeedsTransfer_Continue_with_PT_with_the_same_frequency"))
-
 #Correlation====
 df %>% 
   summarise(cor(WTP_Imp, EduQual_rec))
@@ -1429,8 +1415,19 @@ corrplot(cor(df4,use = "complete.obs"),
          order = "original", method = "number", type = "upper", tl.pos = "td")
 
 
-df4 <- df2  %>%
+df4 <- df2  %>% #old code
   select(c(1:2,4:12,14,22:23,25:31))
+
+df4 <- df2 %>% select(WTP_Same, WTP_Imp,
+                     Sex_Female, Age,
+                     EduQual_rec, Income_rec, Health_rec, NeedAssist_rec, LivesWith_Alone, DriversLic_Current, YrsLived_rec, 
+                     PTPassUse_Annual_subscription,
+                     UseDist_MainMovement2,
+                     TravelTechUse_Yes,
+                     PastForgo_PoorPT_rec_3,
+                     TripsWkly_Drive, TripsWkly_Pax, TripsWkly_Bus, 
+                     TripsWkly_Work, TripsWkly_Family, TripsWkly_Leisure, 
+                    )
 
 names(df4)[names(df4) == "WTP_Same"] <- "WTP Status Quo"
 names(df4)[names(df4) == "WTP_Imp"] <- "WTP Improved"
@@ -1446,12 +1443,12 @@ names(df4)[names(df4) == "PTPassUse_Annual_subscription"] <- "Annual LPT ticket"
 names(df4)[names(df4) == "UseDist_MainMovement2"] <- "Usual travel distance"
 names(df4)[names(df4) == "TravelTechUse_Yes"] <- "Digital travel apps"
 names(df4)[names(df4) == "PastForgo_PoorPT_rec_3"] <- "Forgone trip due to poor PLT"
-names(df4)[names(df4) == "TripsWkly_Drive"] <- "Trips weekly mode: Car driver"
-names(df4)[names(df4) == "TripsWkly_Pax"] <- "Trips weekly mode: Car pax"
-names(df4)[names(df4) == "TripsWkly_Bus"] <- "Trips weekly mode: Bus"
-names(df4)[names(df4) == "TripsWkly_Work"] <- "Trips weekly mode: Work"
-names(df4)[names(df4) == "TripsWkly_Family"] <- "Trips weekly mode: Family"
-names(df4)[names(df4) == "TripsWkly_Leisure"] <- "Trips weekly mode: Leisure"
+names(df4)[names(df4) == "TripsWkly_Drive"] <- "Trip mode: Car driver"
+names(df4)[names(df4) == "TripsWkly_Pax"] <- "Trip mode: Car pax"
+names(df4)[names(df4) == "TripsWkly_Bus"] <- "Trip mode: Bus"
+names(df4)[names(df4) == "TripsWkly_Work"] <- "Trip purpose: Work"
+names(df4)[names(df4) == "TripsWkly_Family"] <- "Trip purpose: Family"
+names(df4)[names(df4) == "TripsWkly_Leisure"] <- "Trip purpose: Leisure"
 
 
 
@@ -1542,7 +1539,7 @@ Sex_Female + Age + EduQual_rec + Income_rec + Health_rec + NeedAssist_rec + Live
 #USE THIS
 
 
-
+#FULL #too many var
 model_same <- lm((WTP_Same) ~ 
                    Sex_Female + Age + LivesWith_Alone + DriversLic_Current +
                    EduQual_rec + Income_rec + Health_rec + NeedAssist_rec + YrsLived_rec +
@@ -1578,11 +1575,69 @@ model_imp <- lm((WTP_Imp) ~
                 , data = df2)
 
 
+#Only demo
+model_same1 <- lm((WTP_Same) ~ 
+                   Sex_Female + Age + LivesWith_Alone + DriversLic_Current +
+                   EduQual_rec + Income_rec + Health_rec + NeedAssist_rec + YrsLived_rec
+                 , data = df2)
+
+model_imp1 <- lm((WTP_Imp) ~ 
+                  Sex_Female + Age + LivesWith_Alone + DriversLic_Current +
+                  EduQual_rec + Income_rec + Health_rec + NeedAssist_rec + YrsLived_rec
+                  , data = df2)
+
+#only demo + travel
+model_same2 <- lm((WTP_Same) ~ 
+                   Sex_Female + Age + LivesWith_Alone + DriversLic_Current +
+                   EduQual_rec + Income_rec + Health_rec + NeedAssist_rec + YrsLived_rec +
+                   When_MainMovement_7to9 + When_MainMovement_11to13 + When_MainMovement_13to15 + When_MainMovement_15to17 + When_MainMovement_17to19 + 
+                   PTPassUse_Annual_subscription + PastForgo_PoorPT_rec + 
+                   TravelTechUse_Yes +
+                   UseDist_MainMovement2 +
+                   TripsWkly_Drive + TripsWkly_Pax + TripsWkly_Bus + 
+                   TripsWkly_Work + TripsWkly_Family + TripsWkly_Leisure
+                 , data = df2)
+
+model_imp2 <- lm((WTP_Imp) ~ 
+                  Sex_Female + Age + LivesWith_Alone + DriversLic_Current +
+                  EduQual_rec + Income_rec + Health_rec + NeedAssist_rec + YrsLived_rec +
+                  When_MainMovement_7to9 + When_MainMovement_11to13 + When_MainMovement_13to15 + When_MainMovement_15to17 + When_MainMovement_17to19 + 
+                  PTPassUse_Annual_subscription + PastForgo_PoorPT_rec + 
+                  TravelTechUse_Yes +
+                  UseDist_MainMovement2 +
+                  TripsWkly_Drive + TripsWkly_Pax + TripsWkly_Bus + 
+                  TripsWkly_Work + TripsWkly_Family + TripsWkly_Leisure
+                , data = df2)
+
+
+#only demo + likert
+model_same3 <- lm((WTP_Same) ~ 
+                   Sex_Female + Age + LivesWith_Alone + DriversLic_Current +
+                   EduQual_rec + Income_rec + Health_rec + NeedAssist_rec + YrsLived_rec +
+                   Relev_TravelCost + Relev_TravelTime + Relev_TravelComf + 
+                   Satif_CommCen + Satif_GreenSpace + Satif_BizActiv + Satif_NearPT + Satif_FeelSecure +
+                   Rate_TPLCost + Rate_Freq + Rate_Punct +
+                   Rate_StopComf + 
+                   Rate_InfoAvailStops + Rate_InfoAvailBoards +
+                   Rate_PedPath + Rate_PedXing + Rate_Lighting + Rate_Stairs
+                 , data = df2)
+
+model_imp3 <- lm((WTP_Imp) ~ 
+                  Sex_Female + Age + LivesWith_Alone + DriversLic_Current +
+                  EduQual_rec + Income_rec + Health_rec + NeedAssist_rec + YrsLived_rec +
+                  Relev_TravelCost + Relev_TravelTime + Relev_TravelComf + 
+                  Satif_CommCen + Satif_GreenSpace + Satif_BizActiv + Satif_NearPT + Satif_FeelSecure +
+                  Rate_TPLCost + Rate_Freq + Rate_Punct +
+                  Rate_StopComf + 
+                  Rate_InfoAvailStops + Rate_InfoAvailBoards +
+                  Rate_PedPath + Rate_PedXing + Rate_Lighting + Rate_Stairs
+                , data = df2)
+
 #model_same2 <- lm(log1p(WTP_Same) ~  swap for log
 #model_imp2 <- lm(log1p(WTP_Imp) ~ 
 
 
-
+#VIF and tol
 tableHTML(ols_vif_tol(model_same))
 tableHTML(ols_vif_tol(model_imp))
 
@@ -1602,7 +1657,7 @@ model_ifw <- ols_step_forward_p(model_imp,
 plot(model_fw)
 
 
-#Best for WTP_Same
+#Best for WTP_Same #was df
 model_sbest <- lm(WTP_Same ~ Sex_Male + Age + EduQual_rec + Income_rec + Health_rec + LivesWith_Alone + DriversLic_Current +
                    PTPassUse_Annual_subscription +
                    Rate_Freq +
@@ -1611,7 +1666,7 @@ model_sbest <- lm(WTP_Same ~ Sex_Male + Age + EduQual_rec + Income_rec + Health_
                    Satif_BizActiv +
                    IntendBike +
                    Satif_FeelSecure + Satif_NearPT
-                 , data = df)
+                 , data = df2)
 
 model_ibest <- lm(WTP_Imp ~ Sex_Male + Age + EduQual_rec + Income_rec + Health_rec + LivesWith_Alone + DriversLic_Current +
                     PTPassUse_Annual_subscription +
@@ -1621,7 +1676,7 @@ model_ibest <- lm(WTP_Imp ~ Sex_Male + Age + EduQual_rec + Income_rec + Health_r
                     Satif_BizActiv +
                     IntendBike +
                     Satif_FeelSecure + Satif_NearPT
-                  , data = df)
+                  , data = df2)
 
 
 #https://cran.r-project.org/web/packages/jtools/vignettes/summ.htmL
@@ -1645,9 +1700,9 @@ tableHTML(v1)
 tableHTML(v2)
 
 
-broom::tidy(summary(lm(model_same, df)))
+broom::tidy(summary(lm(model_same, df2))) #NOT USED
 
-#detailed
+#detailed #NOT USED
 dust(model_same) %>% 
   sprinkle(cols = c("estimate", "std.error", "statistic"),
            round = 3) %>% 
@@ -1668,21 +1723,35 @@ dust(model_imp) %>%
 
 
 
-#compare two models concise
+#compare two models concise #USE THIS
 
 export_summs(model_same, model_imp, 
              robust = "HC3",
              scale = TRUE,
              to.file = "html")
 
+#USE THIS
 export_summs(model_same, model_imp, scale = T, robust = T,
-             #error_format = "[{conf.low}-{conf.high}]", 
-             error_format = "{p.value}", 
+             error_format = "[{conf.low}, {conf.high}]",
+             #error_format = "{p.value}", #only one error format is allowed
              stars = c(`***` = 0.01, `**` = 0.05, `*` = 0.1),
-             statistics = c(N = "nobs", R2 = "r.squared"),
+             statistics = c(N = "nobs", R2 = "r.squared","adj.r.squared", "logLik", "AIC"),
              bold_signif = 0.05,
              digits = 3,
              to.file = "html")
+
+#USE THIS
+export_summs(model_same1, model_imp1, model_same2, model_imp2, model_same3, model_imp3, model_same, model_imp, scale = T, robust = T,
+             #error_format = "[{conf.low}, {conf.high}]",
+             error_format = "{p.value}", #only one error format is allowed at the same time
+             error_pos = c("right"),
+             stars = c(`***` = 0.01, `**` = 0.05, `*` = 0.1),
+             statistics = c(N = "nobs", R2 = "r.squared", AdjR2 = "adj.r.squared", Fstatistic = "statistic", "logLik", "AIC"),
+             bold_signif = 0.05,
+             digits = 3,
+             to.file = "html")
+
+
 
 #AIC
 glance(model_same,
