@@ -48,7 +48,9 @@ pacman::p_load(dplyr,
                broom,
                kableExtra,
                pixiedust,
-               lmtest)
+               lmtest,
+               tableHTML,
+               huxtable)
 
 
 
@@ -62,19 +64,6 @@ df <- read.csv("2019WTPDataset_fixheader.csv")
 
 #str(df)
 
-#Keep only unique rows
-# added to a chain of pipes (e.g. data cleaning)
-df <- df %>% 
-  distinct(across(2:76), # reduces data frame to only unique rows (keeps first one of any duplicates)
-           .keep_all = TRUE) 
-
-
-#Remove outlier rows
-df <- subset(df, ID!= 285)
-
-
-
-
 #Find Duplicates====
 #dups <- df %>% 
 #  janitor::get_dupes(2:73)
@@ -84,6 +73,22 @@ df <- subset(df, ID!= 285)
 
 # if outside pipes, include the data as first argument 
 # distinct(obs)
+
+
+
+
+#Keep only unique rows
+# added to a chain of pipes (e.g. data cleaning)
+df <- df %>% 
+  dplyr::distinct(across(2:76), # reduces data frame to only unique rows (keeps first one of any duplicates)
+           .keep_all = TRUE) 
+
+#Remove outlier rows
+#df <- subset(df, ID!= 285)
+
+
+
+
 
 
 #Recoding=====
@@ -273,6 +278,9 @@ table(df$DriversLic)
 
 
 
+#recode NA as 0
+#df$PastForgo_PoorPT %>% replace_na("Mai")
+
 df$PastForgo_PoorPT = factor(df$PastForgo_PoorPT,
                        levels = c("Molto spesso (almeno 2 volte la settimana)",
                                   "Spesso (almeno 1 volta la settimana) ",
@@ -281,33 +289,36 @@ df$PastForgo_PoorPT = factor(df$PastForgo_PoorPT,
                        labels = c("Very often",
                                   "Often",
                                   "Rarely",
-                                  "Never"
-                                  ))
+                                  "Never"))
 
 
 table(df$PastForgo_PoorPT)
+str(df$PastForgo_PoorPT)
 summary(df$PastForgo_PoorPT)
 
 
-#recode as numeric
+#recode as numbers
 df$PastForgo_PoorPT_rec = car::recode(df$PastForgo_PoorPT,"
                                   'Very often' = 3;
                                   'Often' = 2;
                                   'Rarely' = 1;
                                   'Never' = 0")
 
+#remove NA
+#df <- df[!is.na(df$PastForgo_PoorPT_rec), ]
+
 #replace NA in factor var
-df <- df[!is.na(df$PastForgo_PoorPT), ]
-df$PastForgo_PoorPT[is.na(df$PastForgo_PoorPT)] = 0
+df$PastForgo_PoorPT_rec[is.na(df$PastForgo_PoorPT_rec)] = 0
 
+df$PastForgo_PoorPT_rec <- as.integer(as.factor(df$PastForgo_PoorPT_rec)) -1
 
-df$PastForgo_PoorPT_rec <- as.numeric(as.factor(df$PastForgo_PoorPT_rec)) -1
-summary(df$PastForgo_PoorPT_rec)
+df$PastForgo_PoorPT_rec[df$PastForgo_PoorPT_rec==2] <- 3
 
 str(df$PastForgo_PoorPT_rec)
-
+summary(df$PastForgo_PoorPT_rec)
 table(df$PastForgo_PoorPT_rec)
-table(df$PastForgo_PoorPT_bin)
+
+
 
 df$NeedAssist = factor(df$NeedAssist,
                              levels = c("No, sono completamente autonomo",
@@ -343,9 +354,7 @@ table(df$NeedAssist_rec)
 summary(df$NeedAssist_rec)
 
 
-df$PastForgo_PoorPT_rec <- as.numeric(df$PastForgo_PoorPT_rec)
 
-str(df$PastForgo_PoorPT_rec)
 
 
 
@@ -562,16 +571,52 @@ df$UseDist_MainMovement2[is.na(df$UseDist_MainMovement2)] <- df$EstDist_MainMove
 df <- df %>% relocate(UseSpeed_MainMovement:EstDist_MainMovement, .after = UseTime_MainMovement)
   
 
+
+
 #Dummify====
+#Create dummy from values (WTP)
+
+
+df$WTP_Same_cat <-ifelse(df$WTP_Same > 221.356275303644,"SQHigh","SQLow") #value from n=247 no missing, from desc table
+df$WTP_Imp_cat <-ifelse(df$WTP_Imp > 304.068825910931,"ImpHigh","ImpLow")
+
+df$WTP_Same_zero <-ifelse(df$WTP_Same == 0,1,0) #zero WTP
+df$WTP_Imp_zero <-ifelse(df$WTP_Imp == 0,1,0) 
+
+df$WTP_Same_NA <- ifelse(is.na(df$WTP_Same), 1, 0) #NA
+df$WTP_Imp_NA <- ifelse(is.na(df$WTP_Imp), 1, 0) 
+
+table(df$WTP_Same_cat)
+table(df$WTP_Imp_cat)
+table(df$WTP_Same_zero)
+table(df$WTP_Imp_zero)
+table(df$WTP_Same_NA)
+table(df$WTP_Imp_NA)
+
+
+#join 4 cats
+
+df$WTP_All_cat <- str_c(df$WTP_Same_cat,"-", df$WTP_Imp_cat)
+
+table(df$WTP_All_cat)
+
+
+
+#Categories
 df <- dummy_cols(df, 
                  select_columns = c("Sex", "Age_cat","Status", "Occupation", "Tenure","DriversLic", "EduQual", "LivesWith",
-                                    "PTPassUse", "IfPTNeedsTransfer",
+                                    "PTPassUse", "IfPTNeedsTransfer", "PastForgo_PoorPT_rec",
                                     "TravelTechUse", "NonTechReason",
                                     "WhatActivForgo_PoorPT", "When_ActivForgo_PoorPT", 
-                                    "When_MainMovement", "Purpose_MainMovement","Mode_MainMovement"),
+                                    "When_MainMovement", "Purpose_MainMovement","Mode_MainMovement",
+                                    "WTP_Same_cat", "WTP_Imp_cat", "WTP_All_cat", "WTP_Same_zero", "WTP_Imp_zero", "WTP_Same_NA", "WTP_Imp_NA"),
                  ignore_na = T)
 
+
 colnames(df) <- gsub(" ","_",colnames(df))
+
+
+
 
 #For reference
 write.csv(df, file = "dummy.csv")
@@ -580,6 +625,31 @@ write.csv(df, file = "dummy.csv")
 describevar <- psych::describe(df)
 write.csv(describevar, file = "describevar.csv")
 
+
+
+#Select complete====
+df2 <- df %>% select(WTP_Same, WTP_Imp,
+                     Sex, Sex_Female, Age, 
+                     EduQual_rec, Income_rec, Health_rec, NeedAssist_rec, LivesWith_Alone, DriversLic_Current, YrsLived_rec, 
+                     PTPassUse, PTPassUse_Annual_subscription, 
+                     When_MainMovement,When_MainMovement_7to9, When_MainMovement_9to11, When_MainMovement_11to13, When_MainMovement_13to15, When_MainMovement_15to17, When_MainMovement_17to19, 
+                     UseDist_MainMovement2, 
+                     TravelTechUse_Yes, 
+                     PastForgo_PoorPT_rec, PastForgo_PoorPT_rec_3,
+                     TripsWkly_Drive, TripsWkly_Pax, TripsWkly_Bus, 
+                     TripsWkly_Work, TripsWkly_Family, TripsWkly_Leisure, 
+                     Relev_TravelCost, Relev_TravelTime, Relev_TravelComf, 
+                     Satif_GreenSpace, Satif_CommCen, Satif_BizActiv, Satif_NearPT, Satif_FeelSecure, 
+                     Rate_TPLCost, Rate_Freq, Rate_Punct, 
+                     Rate_StopComf, 
+                     Rate_InfoAvailStops, Rate_InfoAvailBoards, 
+                     Rate_PedPath, Rate_PedXing, Rate_Lighting, Rate_Stairs,
+                     WTP_Same_cat, WTP_Imp_cat, WTP_All_cat, WTP_Same_zero, WTP_Imp_zero, WTP_Same_NA, WTP_Imp_NA)
+
+df2 <- df2 %>% drop_na()
+
+#For reference
+write.csv(df2, file = "df2.csv")
 
 #Crosstabs====
 df %>% tabyl(When_MainMovement, Sex)
@@ -593,6 +663,65 @@ df %>%
   group_by(EduQual_rec) %>% 
   dplyr::summarise(mean = mean(WTP_Imp, na.rm = TRUE), n = n())
 
+
+out_table <- df2 %>% 
+  group_by(PastForgo_PoorPT_rec) %>% 
+  dplyr::summarise(n = n(), meanWTPSame = mean(WTP_Same, na.rm = T), meanWTPImp = mean(WTP_Imp, na.rm = T))
+tableHTML(out_table)
+
+out_table <- df2 %>% 
+  group_by(WTP_All_cat) %>% 
+  dplyr::summarise(n = n(), 
+                   WTPSame = mean(WTP_Same, na.rm = T), 
+                   WTPImp = mean(WTP_Imp, na.rm = T),
+                   Sex_Female = mean(Sex_Female, na.rm = T),    
+                   Age = mean(Age, na.rm = T),
+                   LivesWith_Alone = mean(LivesWith_Alone, na.rm = T),
+                   DriversLic_Current = mean(DriversLic_Current, na.rm = T),
+                   EduQual_rec = mean(EduQual_rec, na.rm = T),
+                   Income_rec = mean(Income_rec, na.rm = T),            
+                   Health_rec = mean(Health_rec, na.rm = T),
+                   NeedAssist_rec = mean(NeedAssist_rec, na.rm = T),
+                   YrsLived_rec = mean(YrsLived_rec, na.rm = T),
+                   When_MainMovement_7to9 = mean(When_MainMovement_7to9, na.rm = T),
+                   When_MainMovement_9to11 = mean(When_MainMovement_9to11, na.rm = T),
+                   When_MainMovement_11to13 = mean(When_MainMovement_11to13, na.rm = T),
+                   When_MainMovement_13to15 = mean(When_MainMovement_13to15, na.rm = T),
+                   When_MainMovement_15to17 = mean(When_MainMovement_15to17, na.rm = T),
+                   When_MainMovement_17to19 = mean(When_MainMovement_17to19, na.rm = T),
+                   PTPassUse_Annual_subscription = mean(PTPassUse_Annual_subscription, na.rm = T),
+                   PastForgo_PoorPT_rec = mean(PastForgo_PoorPT_rec, na.rm = T),
+                   TravelTechUse_Yes = mean(TravelTechUse_Yes, na.rm = T),
+                   UseDist_MainMovement2 = mean(UseDist_MainMovement2, na.rm = T),
+                   TripsWkly_Drive = mean(TripsWkly_Drive, na.rm = T),
+                   TripsWkly_Pax = mean(TripsWkly_Pax, na.rm = T),
+                   TripsWkly_Bus = mean(TripsWkly_Bus, na.rm = T),
+                   TripsWkly_Work = mean(TripsWkly_Work, na.rm = T),
+                   TripsWkly_Family = mean(TripsWkly_Family, na.rm = T),
+                   TripsWkly_Leisure = mean(TripsWkly_Leisure, na.rm = T),
+                   Relev_TravelCost = mean(Relev_TravelCost, na.rm = T),
+                   Relev_TravelTime = mean(Relev_TravelTime, na.rm = T),
+                   Relev_TravelComf = mean(Relev_TravelComf, na.rm = T),
+                   Satif_GreenSpace = mean(Satif_GreenSpace, na.rm = T),
+                   Satif_CommCen = mean(Satif_CommCen, na.rm = T),
+                   Satif_BizActiv = mean(Satif_BizActiv, na.rm = T),
+                   Satif_NearPT = mean(Satif_NearPT, na.rm = T),
+                   Satif_FeelSecure = mean(Satif_FeelSecure, na.rm = T),
+                   Rate_TPLCost = mean(Rate_TPLCost, na.rm = T),
+                   Rate_Freq = mean(Rate_Freq, na.rm = T),
+                   Rate_Punct = mean(Rate_Punct, na.rm = T),
+                   Rate_StopComf = mean(Rate_StopComf, na.rm = T),
+                   Rate_InfoAvailStops = mean(Rate_InfoAvailStops, na.rm = T),
+                   Rate_InfoAvailBoards = mean(Rate_InfoAvailBoards, na.rm = T),
+                   Rate_PedPath = mean(Rate_PedPath, na.rm = T),
+                   Rate_PedXing = mean(Rate_PedXing, na.rm = T),
+                   Rate_Lighting = mean(Rate_Lighting, na.rm = T),
+                   Rate_Stairs = mean(Rate_Stairs, na.rm = T))
+tableHTML(out_table)
+
+
+                   
+                   
 #Descriptive ====
 
 #statistic = list(all_continuous() ~ "{mean} ({sd})",
@@ -623,44 +752,34 @@ Desc <- df %>%
 Desc 
 
 
+Relev_TravelCost , Relev_TravelTime , Relev_TravelComf , 
+Satif_GreenSpace , Satif_BizActiv , Satif_NearPT , Satif_FeelSecure ,
+Rate_TPLCost , Rate_Freq , Rate_Punct ,
+Rate_StopComf , 
+Rate_InfoAvailStops , Rate_InfoAvailBoards ,
+Rate_PedPath , Rate_PedXing , Rate_Lighting , Rate_Stairs,
 
-Desc <- df %>% 
+
+#Complete only
+Desc <- df2 %>% 
   select(
-    #Demo
-    Sex,
-    Age,
-    EduQual_rec,
-    Income_rec,
-    Health_rec,
-    NeedAssist_rec,
-    LivesWith_Alone,
-    DriversLic_Current,
-    YrsLived_rec,
-    PTPassUse_Annual_subscription,
-    #Travel
-    When_MainMovement_7to9,
-    When_MainMovement_9to11,
-    When_MainMovement_11to13,
-    When_MainMovement_13to15,
-    When_MainMovement_17to19,
-    UseDist_MainMovement2,
-    TravelTechUse_Yes,
-    PastForgo_PoorPT_rec,
-    TripsWkly_Drive,
-    TripsWkly_Pax,
-    TripsWkly_Bus,
-    TripsWkly_Work,
-    TripsWkly_Family,
-    TripsWkly_Leisure,
+    Sex , Age , LivesWith_Alone , DriversLic_Current ,
     #WTP
-    WTP_Same, WTP_Imp
+    WTP_Same, WTP_Imp, WTP_Same_cat, WTP_Imp_cat, WTP_All_cat,
+    EduQual_rec , Income_rec , Health_rec , NeedAssist_rec , YrsLived_rec ,
+    When_MainMovement, 
+    PTPassUse , PastForgo_PoorPT_rec , 
+    TravelTechUse_Yes ,
+    UseDist_MainMovement2 ,
+    TripsWkly_Drive , TripsWkly_Pax , TripsWkly_Bus , 
+    TripsWkly_Work , TripsWkly_Family , TripsWkly_Leisure
   ) %>% # keep only columns of interest
   tbl_summary(     
     by = Sex,
-    statistic = list(all_continuous() ~ "{mean} ({sd})",
+    statistic = list(all_continuous() ~ "{mean}",
                      all_categorical() ~ "{n}"),
     digits = list(all_categorical() ~ c(0, 0, 2), all_continuous() ~ 2),
-    missing = "always",
+    missing = NULL,#"always",
     missing_text = "(Missing)"
   ) %>%
   as_flex_table()
@@ -668,28 +787,9 @@ Desc
 
 
 
-statistic = list(all_continuous() ~ "{mean} ({sd})",
-                 all_categorical() ~ "{n} / {N} ({p}%)"),
+#statistic = list(all_continuous() ~ "{mean} ({sd})",
+#                 all_categorical() ~ "{n} / {N} ({p}%)"),
 
-
-#perception
-Relev_TravelCost,
-Relev_TravelTime,
-Relev_TravelComf,
-Satif_GreenSpace,
-Satif_BizActiv,
-Satif_NearPT,
-Satif_FeelSecure,
-Rate_TPLCost,
-Rate_Freq,
-Rate_Punct,
-Rate_StopComf,
-Rate_InfoAvailStops,
-Rate_InfoAvailBoards,
-Rate_PedPath,
-Rate_PedXing,
-Rate_Lighting,
-Rate_Stairs,
 
 
 
@@ -722,6 +822,113 @@ Relev_TravelCost, Relev_TravelTime
 Trips_pday, TripsWkly_Drive, TripsWkly_Pax, TripsWkly_Bus, TripsWkly_Train, TripsWkly_CycPed, 
 TripsWkly_Work, TripsWkly_Family, TripsWkly_Leisure
 
+#LIKERT====
+
+#Factorise
+#Relevance: How relevant is the X to you? 
+df3 <- df2 %>% 
+  mutate_at(.vars = c(32:34), 
+            .funs = function(x) factor(x, 
+                                       levels = c(1,2,3,4,5,6,7), 
+                                       labels = c("1 (Irrelevant)","2","3","4","5", "6", "7 (Very Relevant)")))
+
+#Satisfaction: How satisfied are you with your neighborhood as regards the presence of X?
+df3 <- df3 %>% 
+  mutate_at(.vars = c(35:39), 
+            .funs = function(x) factor(x, 
+                                       levels = c(1,2,3,4,5,6,7), 
+                                       labels = c("1 (Not Satisfied)","2","3","4","5", "6", "7 (Very Satisfied)")))
+
+#Ratings: What is your opinion on X?
+df3 <- df3 %>% 
+  mutate_at(.vars = c(40:49), 
+            .funs = function(x) factor(x, 
+                                       levels = c(1,2,3,4,5,6,7,8,9,10), 
+                                       labels = c("1 (Very Poor)","2","3","4","5", "6", "7", "8", "9", "10 (Very Good)")))
+
+
+summary(df3$Relev_TravelCost)
+str(df3$Relev_TravelTime)
+str(df3$Relev_TravelComf)
+
+summary(df3$Satif_CommCen)
+summary(df3$Satif_GreenSpace)
+summary(df3$Satif_BizActiv)
+summary(df3$Satif_NearPT)
+
+summary(df3$Rate_TPLCost)
+summary(df3$Rate_Freq)
+summary(df3$Rate_Punct)
+
+
+
+
+
+#Likert Plot
+#Relevance: How relevant is X to you
+LikertRel <- as.data.frame(df3[ , c(32:34)]) #select col from df
+colnames(LikertRel) <- c("1. Travel cost",
+                         "2. Travel time",
+                         "3. Comfort")
+
+LikertRel <- likert(LikertRel, grouping=df3$WTP_All_cat)
+#LikertRel <- likert(LikertRel)
+summary(LikertRel)
+p1 <- plot(LikertRel) + theme(strip.text.x = element_text(size = 10, face = "bold")) + 
+  theme(axis.title.x= element_text(size = 9))
+p1
+
+
+
+
+#Satisfaction
+LikertSat <- as.data.frame(df3[ , c(35:39)]) #select col from df
+colnames(LikertSat) <- c("1. Green space",
+                         "2. Community centers",
+                         "3. Business activity",
+                         "4. Public transport",
+                         "5. General security")
+
+LikertSat <- likert(LikertSat, grouping=df3$WTP_All_cat)
+#LikertSat <- likert(LikertSat)
+summary(LikertSat)
+p2 <- plot(LikertSat) + theme(strip.text.x = element_text(size = 10, face = "bold")) + 
+  theme(axis.title.x= element_text(size = 9))
+p2
+
+
+#Combine plots
+plot_grid(
+  p1, p2,
+  labels = c('A', 'B'),
+  ncol = 1,
+  rel_heights = c(3,4.3)
+)
+
+#Land pdf  9x 11
+
+
+#Ratings
+LikertRate <- as.data.frame(df3[ , c(40:49)]) #select col from df
+colnames(LikertRate) <- c("a. LPT Cost",
+                          "b. LPT Frequency",
+                          "c. LPT Punctuality",
+                          "d. LPT Stop Comfort",
+                          "e. Information at LPT stops",
+                          "f. Information on board LPT",
+                          "g. Condition of pedestrian paths",
+                          "f. Condition of pedestrian crossings",
+                          "i. Condition of lighting",
+                          "j. Condition of stairs")
+
+LikertRate <- likert(LikertRate, grouping=df3$WTP_All_cat)
+#LikertRate <- likert(LikertRate)
+summary(LikertRate)
+p3 <- plot(LikertRate) + theme(strip.text.x = element_text(size = 10, face = "bold")) + 
+  theme(axis.title.x= element_text(size = 9))
+p3
+
+#Port  pdf 9 x 12
 
 
 #histogram  ====
@@ -742,25 +949,6 @@ Rate_SafetyStop, Rate_SafetyBoard, Rate_GuideCourtesy,
 Rate_PedPath, Rate_MaintClean, Rate_PedXing, Rate_Lighting, Rate_Stairs)
 
 
-#Select complete====
-df2 <- df %>% select(WTP_Same, WTP_Imp,
-                     Sex_Female, Age, 
-                     EduQual_rec, Income_rec, Health_rec, NeedAssist_rec, LivesWith_Alone, DriversLic_Current, YrsLived_rec, 
-                     PTPassUse_Annual_subscription, 
-                     When_MainMovement_7to9, When_MainMovement_9to11, When_MainMovement_11to13, When_MainMovement_13to15, When_MainMovement_17to19, 
-                     UseDist_MainMovement2, 
-                     TravelTechUse_Yes, 
-                     PastForgo_PoorPT_rec, 
-                     TripsWkly_Drive, TripsWkly_Pax, TripsWkly_Bus, 
-                     TripsWkly_Work, TripsWkly_Family, TripsWkly_Leisure, 
-                     Relev_TravelCost, Relev_TravelTime, Relev_TravelComf, 
-                     Satif_GreenSpace, Satif_BizActiv, Satif_NearPT, Satif_FeelSecure, 
-                     Rate_TPLCost, Rate_Freq, Rate_Punct, 
-                     Rate_StopComf, 
-                     Rate_InfoAvailStops, Rate_InfoAvailBoards, 
-                     Rate_PedPath, Rate_PedXing, Rate_Lighting, Rate_Stairs)
-
-df2 <- df2 %>% drop_na()
 
 
 
@@ -1060,19 +1248,8 @@ plot_sc (df_trip5)
 
 
 
-#Correlation====
-df %>% 
-  summarise(cor(WTP_Imp, EduQual_rec))
 
-ggpairs(df, columns = c(32,34,3,85,81:83,6,8,86,89,93,95,103,106,113,118,121,135:137)) #demo
-ggpairs(df, columns = c(32,34,19:23)) #satif
-ggpairs(df, columns = c(32,34,26:29)) #int
-ggpairs(df, columns = c(32, 34)) #WTP
-ggpairs(df, columns = c(32,34,36:41, 53:66)) #rate
-ggpairs(df, columns = c(32,34,43:50)) #trips
-ggpairs(df, columns = c(32,34,51:52)) #rel
-ggpairs(df, columns = c(32,34,74:75)) #travellength
-ggpairs(df, columns = c(32,34,123:128)) #whenforgo
+
 
        
 #Logistic Regression====
@@ -1204,9 +1381,7 @@ model <- lm(WTP_Same ~
               IfPTNeedsTransfer_Continue_with_PT_with_the_same_frequency + IfPTNeedsTransfer_Continue_with_PT_but_with_reduced_frequency + IfPTNeedsTransfer_Use_private_car_without_changing_my_schedule + IfPTNeedsTransfer_Use_private_car_with_changed_schedules + IfPTNeedsTransfer_I_would_never_make_that_trip_ever_again
             , data = df)
 
-#VIF test
-ols_vif_tol(model_same)
-ols_vif_tol(model_imp)
+
 
 
 df2 <- df  %>%
@@ -1227,6 +1402,21 @@ df2 <- df  %>%
            "PTPassUse_Annual_subscription" ,
            "IfPTNeedsTransfer_Continue_with_PT_with_the_same_frequency"))
 
+#Correlation====
+df %>% 
+  summarise(cor(WTP_Imp, EduQual_rec))
+
+ggpairs(df, columns = c(32,34,3,85,81:83,6,8,86,89,93,95,103,106,113,118,121,135:137)) #demo
+ggpairs(df, columns = c(32,34,19:23)) #satif
+ggpairs(df, columns = c(32,34,26:29)) #int
+ggpairs(df, columns = c(32, 34)) #WTP
+ggpairs(df, columns = c(32,34,36:41, 53:66)) #rate
+ggpairs(df, columns = c(32,34,43:50)) #trips
+ggpairs(df, columns = c(32,34,51:52)) #rel
+ggpairs(df, columns = c(32,34,74:75)) #travellength
+ggpairs(df, columns = c(32,34,123:128)) #whenforgo
+
+
 #Multi Corr Test
 corrplot(cor(df2,use = "complete.obs"),
          tl.cex = 0.4,
@@ -1235,6 +1425,54 @@ corrplot(cor(df2,use = "complete.obs"),
          number.digits = 1,
          order = "original", method = "number", type = "upper", tl.pos = "td")
 
+
+df4 <- df2  %>%
+  select(c(1:2,4:12,14,22:23,25:31))
+
+names(df4)[names(df4) == "WTP_Same"] <- "WTP Status Quo"
+names(df4)[names(df4) == "WTP_Imp"] <- "WTP Improved"
+names(df4)[names(df4) == "Sex_Female"] <- "Sex: Female"
+names(df4)[names(df4) == "EduQual_rec"] <- "Education"
+names(df4)[names(df4) == "Income_rec"] <- "Income"
+names(df4)[names(df4) == "Health_rec"] <- "Health"
+names(df4)[names(df4) == "NeedAssist_rec"] <- "Need assist"
+names(df4)[names(df4) == "LivesWith_Alone"] <- "Lives alone"
+names(df4)[names(df4) == "DriversLic_Current"] <- "Drivers Licience"
+names(df4)[names(df4) == "YrsLived_rec"] <- "Years lived in neighbourhood"
+names(df4)[names(df4) == "PTPassUse_Annual_subscription"] <- "Annual LPT ticket"
+names(df4)[names(df4) == "UseDist_MainMovement2"] <- "Usual travel distance"
+names(df4)[names(df4) == "TravelTechUse_Yes"] <- "Digital travel apps"
+names(df4)[names(df4) == "PastForgo_PoorPT_rec_3"] <- "Forgone trip due to poor PLT"
+names(df4)[names(df4) == "TripsWkly_Drive"] <- "Trips weekly mode: Vehicle driver"
+names(df4)[names(df4) == "TripsWkly_Pax"] <- "Trips weekly mode: Vehicle pax"
+names(df4)[names(df4) == "TripsWkly_Bus"] <- "Trips weekly mode: bus"
+names(df4)[names(df4) == "TripsWkly_Work"] <- "Trips weekly mode: Work"
+names(df4)[names(df4) == "TripsWkly_Family"] <- "Trips weekly mode: Family"
+names(df4)[names(df4) == "TripsWkly_Leisure"] <- "Trips weekly mode: Leisure"
+
+
+
+M = cor(df4)
+ord = corrMatOrder(M, order = 'AOE')
+M2 = M[ord, ord] #if wanting AOE order
+
+corrplot.mixed(
+  M,
+  lower = "number",
+  upper = "circle",
+  tl.pos = c("lt"),
+  diag = c("l"),
+  bg = "white",
+  addgrid.col = "grey",
+  lower.col = NULL,
+  upper.col = NULL,
+  tl.cex = 1.25,
+  number.cex = 1,
+  number.digits = 1,
+  cl.cex = 0.9,
+  tl.col = "grey50"
+)
+#1700x1700
 
 Rate_PedPath Rate_MaintClean <- pick 1 only
 Rate_WalkSafe corr with many, pick this
@@ -1270,17 +1508,16 @@ Sex_Female + Age + EduQual_rec + Income_rec + Health_rec + NeedAssist_rec + Live
 
 
 model_same <- lm((WTP_Same) ~ 
-                   Sex_Female + Age +
-                   EduQual_rec + Income_rec + Health_rec + NeedAssist_rec + LivesWith_Alone + DriversLic_Current + YrsLived_rec +
-                   PTPassUse_Annual_subscription +
-                   When_MainMovement_7to9 + When_MainMovement_9to11 + When_MainMovement_11to13 + When_MainMovement_13to15 + When_MainMovement_17to19 + 
-                   UseDist_MainMovement2 +
+                   Sex_Female + Age + LivesWith_Alone + DriversLic_Current +
+                   EduQual_rec + Income_rec + Health_rec + NeedAssist_rec + YrsLived_rec +
+                   When_MainMovement_7to9 + When_MainMovement_11to13 + When_MainMovement_13to15 + When_MainMovement_15to17 + When_MainMovement_17to19 + 
+                   PTPassUse_Annual_subscription + PastForgo_PoorPT_rec + 
                    TravelTechUse_Yes +
-                   PastForgo_PoorPT_rec +
+                   UseDist_MainMovement2 +
                    TripsWkly_Drive + TripsWkly_Pax + TripsWkly_Bus + 
                    TripsWkly_Work + TripsWkly_Family + TripsWkly_Leisure +
                    Relev_TravelCost + Relev_TravelTime + Relev_TravelComf + 
-                   Satif_GreenSpace + Satif_BizActiv + Satif_NearPT + Satif_FeelSecure +
+                   Satif_CommCen + Satif_GreenSpace + Satif_BizActiv + Satif_NearPT + Satif_FeelSecure +
                    Rate_TPLCost + Rate_Freq + Rate_Punct +
                    Rate_StopComf + 
                    Rate_InfoAvailStops + Rate_InfoAvailBoards +
@@ -1288,22 +1525,22 @@ model_same <- lm((WTP_Same) ~
                  , data = df2)
 
 model_imp <- lm((WTP_Imp) ~ 
-                  Sex_Female + Age +
-                  EduQual_rec + Income_rec + Health_rec + NeedAssist_rec + LivesWith_Alone + DriversLic_Current + YrsLived_rec +
-                  PTPassUse_Annual_subscription +
-                  When_MainMovement_7to9 + When_MainMovement_9to11 + When_MainMovement_11to13 + When_MainMovement_13to15 + When_MainMovement_17to19 + 
-                  UseDist_MainMovement2 +
+                  Sex_Female + Age + LivesWith_Alone + DriversLic_Current +
+                  EduQual_rec + Income_rec + Health_rec + NeedAssist_rec + YrsLived_rec +
+                  When_MainMovement_7to9 + When_MainMovement_11to13 + When_MainMovement_13to15 + When_MainMovement_15to17 + When_MainMovement_17to19 + 
+                  PTPassUse_Annual_subscription + PastForgo_PoorPT_rec + 
                   TravelTechUse_Yes +
-                  PastForgo_PoorPT_rec +
+                  UseDist_MainMovement2 +
                   TripsWkly_Drive + TripsWkly_Pax + TripsWkly_Bus + 
                   TripsWkly_Work + TripsWkly_Family + TripsWkly_Leisure +
                   Relev_TravelCost + Relev_TravelTime + Relev_TravelComf + 
-                  Satif_GreenSpace + Satif_BizActiv + Satif_NearPT + Satif_FeelSecure +
+                  Satif_CommCen + Satif_GreenSpace + Satif_BizActiv + Satif_NearPT + Satif_FeelSecure +
                   Rate_TPLCost + Rate_Freq + Rate_Punct +
                   Rate_StopComf + 
                   Rate_InfoAvailStops + Rate_InfoAvailBoards +
                   Rate_PedPath + Rate_PedXing + Rate_Lighting + Rate_Stairs
                 , data = df2)
+
 
 #model_same2 <- lm(log1p(WTP_Same) ~  swap for log
 #model_imp2 <- lm(log1p(WTP_Imp) ~ 
@@ -1363,6 +1600,13 @@ anova(lm(model_imp))
 summ(model_same, confint = TRUE, vifs = TRUE, digits = 3)
 summ(model_imp, confint = TRUE, vifs = TRUE,  digits = 3)
 
+#VIF test
+v1 <- ols_vif_tol(model_same)
+v2 <- ols_vif_tol(model_imp)
+
+tableHTML(v1)
+tableHTML(v2)
+
 
 broom::tidy(summary(lm(model_same, df)))
 
@@ -1390,11 +1634,34 @@ dust(model_imp) %>%
 #compare two models concise
 
 export_summs(model_same, model_imp, 
-             robust = TRUE,
-             scale = TRUE, to.file = "html")
+             robust = "HC3",
+             scale = TRUE,
+             to.file = "html")
 
+export_summs(model_same, model_imp, scale = T, robust = T,
+             #error_format = "[{conf.low}-{conf.high}]", 
+             error_format = "{p.value}", 
+             stars = c(`***` = 0.01, `**` = 0.05, `*` = 0.1),
+             statistics = c(N = "nobs", R2 = "r.squared"),
+             bold_signif = 0.05,
+             digits = 3,
+             to.file = "html")
 
+#AIC
+glance(model_same,
+       confint = TRUE,
+       scale = TRUE, n.sd = 1,
+       vifs = TRUE,
+       digits = 3)
 
+glance(model_imp,
+       confint = TRUE,
+       scale = TRUE, n.sd = 1,
+       vifs = TRUE,
+       digits = 3)
+
+#huxreg
+huxreg(model_same, model_imp, error_pos = "same")
 
 #plots
 #https://jtools.jacob-long.com/index.html
@@ -1426,10 +1693,10 @@ plot_coefs(model_same, model_imp,
 #force OLS
 plot_summs(model_same, model_imp,
            ci_level = 0.95,
-           robust = list(FALSE, FALSE),
+           robust = list(T, T),
            model.names = c("WTP - Status Quo", "WTP - Improved"))
 
-plot_summs(model_same, model_same, model_same, model_same, robust = list(FALSE, "HC0", "HC3", "HC5"),
+plot_summs(model_same, model_same, model_same, model_same, robust = list(T, "HC0", "HC3", "HC5"),
            model.names = c("OLS", "HC0", "HC3", "HC5"))
 
 
@@ -1446,6 +1713,14 @@ plot(model_imp, 4)
 
 #validating 
 #https://bookdown.org/jimr1603/Intermediate_R_-_R_for_Survey_Analysis/testing-regression-assumptions.html#testing-the-homoscedasticity-assumption
+
+ols_test_normality(model_same)
+ols_test_normality(model_imp)
+ols_test_correlation(model_same)
+ols_test_correlation(model_imp)
+ols_plot_resid_hist(model_same)
+ols_plot_resid_hist(model_imp)
+
 
 #Breusch-Pagan Test to test heteroskedasticity
 lmtest::bptest(model_same)
