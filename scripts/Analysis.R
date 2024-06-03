@@ -50,7 +50,8 @@ pacman::p_load(dplyr,
                pixiedust,
                lmtest,
                tableHTML,
-               huxtable)
+               huxtable,
+               CRediTas)
 
 
 
@@ -59,7 +60,8 @@ pacman::p_load(dplyr,
 #library(units)
 
 #LOAD data ====
-setwd("/Users/abeleung/Documents/Work/Griffith PhD URP/Conferences/WCTR/2023/Genoa Senior Travel/Data")
+setwd("/Users/abeleung/Documents/Work/Griffith PhD URP/Journal/Research in Transportation Business & Management/Genoa Senior Travel/Data/")
+
 df <- read.csv("2019WTPDataset_fixheader.csv")
 
 #str(df)
@@ -629,7 +631,8 @@ write.csv(describevar, file = "describevar.csv")
 
 #Select complete====
 df2 <- df %>% select(WTP_Same, WTP_Imp,
-                     Sex, Sex_Female, Age, 
+                     Sex, Sex_Female, Age,
+                     HomeQuartier,
                      EduQual_rec, Income_rec, Health_rec, NeedAssist_rec, LivesWith_Alone, DriversLic_Current, YrsLived_rec, 
                      PTPassUse, PTPassUse_Annual_subscription, 
                      When_MainMovement,When_MainMovement_7to9, When_MainMovement_9to11, When_MainMovement_11to13, When_MainMovement_13to15, When_MainMovement_15to17, When_MainMovement_17to19, 
@@ -763,7 +766,7 @@ Rate_PedPath , Rate_PedXing , Rate_Lighting , Rate_Stairs,
 #Complete only
 Desc <- df2 %>% 
   select(
-    Sex , Age , LivesWith_Alone , DriversLic_Current ,
+    Sex , Age , LivesWith_Alone , DriversLic_Current, HomeQuartier,
     #WTP
     WTP_Same, WTP_Imp, WTP_Same_cat, WTP_Imp_cat, WTP_All_cat,
     EduQual_rec , Income_rec , Health_rec , NeedAssist_rec , YrsLived_rec ,
@@ -775,7 +778,7 @@ Desc <- df2 %>%
     TripsWkly_Work , TripsWkly_Family , TripsWkly_Leisure
   ) %>% # keep only columns of interest
   tbl_summary(     
-    by = Sex,
+    #by = Sex,
     statistic = list(all_continuous() ~ "{mean}",
                      all_categorical() ~ "{n}"),
     digits = list(all_categorical() ~ c(0, 0, 2), all_continuous() ~ 2),
@@ -1418,7 +1421,7 @@ ggpairs(df, columns = c(32,34,123:128)) #whenforgo
 
 
 #Multi Corr Test
-corrplot(cor(df2,use = "complete.obs"),
+corrplot(cor(df4,use = "complete.obs"),
          tl.cex = 0.4,
          number.cex = 0.6,
          number.font = 2,
@@ -1438,14 +1441,14 @@ names(df4)[names(df4) == "Health_rec"] <- "Health"
 names(df4)[names(df4) == "NeedAssist_rec"] <- "Need assist"
 names(df4)[names(df4) == "LivesWith_Alone"] <- "Lives alone"
 names(df4)[names(df4) == "DriversLic_Current"] <- "Drivers Licience"
-names(df4)[names(df4) == "YrsLived_rec"] <- "Years lived in neighbourhood"
+names(df4)[names(df4) == "YrsLived_rec"] <- "Years lived" #in neighbourhood
 names(df4)[names(df4) == "PTPassUse_Annual_subscription"] <- "Annual LPT ticket"
 names(df4)[names(df4) == "UseDist_MainMovement2"] <- "Usual travel distance"
 names(df4)[names(df4) == "TravelTechUse_Yes"] <- "Digital travel apps"
 names(df4)[names(df4) == "PastForgo_PoorPT_rec_3"] <- "Forgone trip due to poor PLT"
-names(df4)[names(df4) == "TripsWkly_Drive"] <- "Trips weekly mode: Vehicle driver"
-names(df4)[names(df4) == "TripsWkly_Pax"] <- "Trips weekly mode: Vehicle pax"
-names(df4)[names(df4) == "TripsWkly_Bus"] <- "Trips weekly mode: bus"
+names(df4)[names(df4) == "TripsWkly_Drive"] <- "Trips weekly mode: Car driver"
+names(df4)[names(df4) == "TripsWkly_Pax"] <- "Trips weekly mode: Car pax"
+names(df4)[names(df4) == "TripsWkly_Bus"] <- "Trips weekly mode: Bus"
 names(df4)[names(df4) == "TripsWkly_Work"] <- "Trips weekly mode: Work"
 names(df4)[names(df4) == "TripsWkly_Family"] <- "Trips weekly mode: Family"
 names(df4)[names(df4) == "TripsWkly_Leisure"] <- "Trips weekly mode: Leisure"
@@ -1453,8 +1456,8 @@ names(df4)[names(df4) == "TripsWkly_Leisure"] <- "Trips weekly mode: Leisure"
 
 
 M = cor(df4)
-ord = corrMatOrder(M, order = 'AOE')
-M2 = M[ord, ord] #if wanting AOE order
+#ord = corrMatOrder(M, order = 'AOE')
+#M2 = M[ord, ord] #if wanting AOE order
 
 corrplot.mixed(
   M,
@@ -1462,6 +1465,7 @@ corrplot.mixed(
   upper = "circle",
   tl.pos = c("lt"),
   diag = c("l"),
+  order = 'hclust',
   bg = "white",
   addgrid.col = "grey",
   lower.col = NULL,
@@ -1473,6 +1477,38 @@ corrplot.mixed(
   tl.col = "grey50"
 )
 #1700x1700
+
+#improved
+corrplot(M,
+         method="color",
+         col = COL2('PiYG'),
+         type="lower",
+         order="hclust", 
+         addCoef.col = "black", # Add coefficient of correlation
+         tl.col="black", #Text label color and rotation
+         tl.cex = 1,
+         number.cex = 0.8,
+         number.digits = 1,
+         tl.pos = c("lt"),
+         # hide correlation coefficient on the principal diagonal
+         diag=T 
+)
+
+corrplot(M,
+         method="color",
+         type = 'lower',
+         order = 'hclust',
+         addCoef.col = "black", # Add coefficient of correlation
+         tl.col = 'black',
+         tl.cex = 0.8,
+         number.cex = 0.6,
+         number.digits = 1,
+         cl.ratio = 0.1,
+         tl.srt = 45,
+         col = COL2('PiYG', 10))
+
+#1000x1000png
+
 
 Rate_PedPath Rate_MaintClean <- pick 1 only
 Rate_WalkSafe corr with many, pick this
@@ -1547,8 +1583,9 @@ model_imp <- lm((WTP_Imp) ~
 
 
 
-ols_vif_tol(model_same)
-ols_vif_tol(model_imp)
+tableHTML(ols_vif_tol(model_same))
+tableHTML(ols_vif_tol(model_imp))
+
 
 
 #choose best with step forward *reduced R2
@@ -1785,6 +1822,25 @@ export_summs(fit, fit2, scale = TRUE,
              error_format = "[{conf.low}, {conf.high}]")
 
 export_summs(fit, fit2, scale = TRUE, to.file = "docx", file.name = "test.docx")
+
+#CRediTas====
+# Read the template back (in real life once it has been populated)
+
+
+cras_table <- template_create(authors = c("Abraham Leung", "Claudia Burlando", "Tiziano Pavanini"))
+
+write.csv(cras_table, file="cras_table.csv")
+
+knitr::kable(cras_table)
+fix(cras_table)
+
+cras_table <- read.csv("cras_table.csv")
+
+textfile <- tempfile()
+
+cras_write(cras_table, "CRediT.txt", markdown = F, quiet = TRUE)
+
+textfile
 
 
 
