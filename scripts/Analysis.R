@@ -64,7 +64,7 @@ pacman::p_load(dplyr,
 here("Analysis","data","processed")
 here()
 
-df <- read.csv(here("Analysis","data","processed","2019WTPDataset_fixheader.csv"))
+df <- read.csv(here("data","processed","2019WTPDataset_fixheader.csv"))
 
 #str(df)
 
