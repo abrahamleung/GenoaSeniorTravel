@@ -8,6 +8,4 @@ The Published article can be found here:
 
 An open access link is here: (Pending)
 
-Many of the data sources are not openly available so the data is not provided here. We have given a list of data sources in the paper. Some of the data is available to researchers who register for access.
-
-The folder [to add] contains code and dummy data allowing a minimal example to run
+Many of the data sources are not openly available so the data is not provided here. You may wish to enquire Dr Tiziano Pavanini for further details regarding the data.
