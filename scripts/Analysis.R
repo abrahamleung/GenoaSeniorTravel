@@ -290,9 +290,9 @@ df$PastForgo_PoorPT = factor(df$PastForgo_PoorPT,
                                   "Spesso (almeno 1 volta la settimana) ",
                                   "Raramente (qualche volta l‘anno)",
                                   "Mai"), 
-                       labels = c("Very often",
+                       labels = c("Always",
                                   "Often",
-                                  "Rarely",
+                                  "At times",
                                   "Never"))
 
 
@@ -303,9 +303,9 @@ summary(df$PastForgo_PoorPT)
 
 #recode as numbers
 df$PastForgo_PoorPT_rec = car::recode(df$PastForgo_PoorPT,"
-                                  'Very often' = 3;
+                                  'Always' = 3;
                                   'Often' = 2;
-                                  'Rarely' = 1;
+                                  'At times' = 1;
                                   'Never' = 0")
 
 #remove NA
@@ -1442,7 +1442,7 @@ names(df4)[names(df4) == "YrsLived_rec"] <- "Years lived" #in neighbourhood
 names(df4)[names(df4) == "PTPassUse_Annual_subscription"] <- "Annual LPT ticket"
 names(df4)[names(df4) == "UseDist_MainMovement2"] <- "Usual travel distance"
 names(df4)[names(df4) == "TravelTechUse_Yes"] <- "Digital travel apps"
-names(df4)[names(df4) == "PastForgo_PoorPT_rec_3"] <- "Forgone trip due to poor PLT"
+names(df4)[names(df4) == "PastForgo_PoorPT_rec_3"] <- "Forgone trip due to poor LPT"
 names(df4)[names(df4) == "TripsWkly_Drive"] <- "Trip mode: Car driver"
 names(df4)[names(df4) == "TripsWkly_Pax"] <- "Trip mode: Car pax"
 names(df4)[names(df4) == "TripsWkly_Bus"] <- "Trip mode: Bus"
