@@ -1893,8 +1893,6 @@ export_summs(fit, fit2, scale = TRUE,
 export_summs(fit, fit2, scale = TRUE, to.file = "docx", file.name = "test.docx")
 
 #CRediTas====
-# Read the template back (in real life once it has been populated)
-
 
 cras_table <- template_create(authors = c("Abraham Leung", "Claudia Burlando", "Tiziano Pavanini"))
 
@@ -1910,14 +1908,3 @@ textfile <- tempfile()
 cras_write(cras_table, "CRediT.txt", markdown = F, quiet = TRUE)
 
 textfile
-
-
-
-#Ideas ====
-
-#Tobit or not (only cat)
-#Linear for likert
-
-#Cumulative distrubiton plot for both WTP
-
-#log or not?
